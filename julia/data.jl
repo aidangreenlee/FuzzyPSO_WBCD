@@ -11,7 +11,7 @@ struct WBCD_data
     testing_d::Vector{Int}
     names::Vector{String}
 
-    function WBCD_data(filepath = "data/diagnostic.data")
+    function WBCD_data(filepath = "data/diagnostic.data"; nvars::Int64 = 30)
         data = readdlm(filepath, ',', Any, '\n')
 
         # get diagnosis
@@ -24,9 +24,9 @@ struct WBCD_data
         training_set_index = rand(1:size(data,1), training_set_size)
         testing_set_index  = setdiff(1:size(data,1), training_set_index)
        
-        training_x = data[training_set_index, :]
+        training_x = data[training_set_index, 1:nvars]
         training_d = d[training_set_index]
-        testing_x  = data[testing_set_index, :]
+        testing_x  = data[testing_set_index, 1:nvars]
         testing_d  = d[testing_set_index]
 
         # WBCD variable names
