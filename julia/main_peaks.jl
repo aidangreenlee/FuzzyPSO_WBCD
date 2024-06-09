@@ -8,15 +8,19 @@ include("./PSO.jl")
 PSO_ = PSO(W=.9,φ₁=1.0,φ₂=2.0)
 println("Running particle swarm...")
 
+if !isdir("outputs")
+    mkdir("outputs")
+end
+
 io = Vector{IOStream}(undef, PSO_.M)
 for m = 1:PSO_.M
-io[m] = open("output$(m).txt","w")
+io[m] = open("outputs/output$(m).txt","w")
 write(io[m], "particleSize: $(size(PSO_.particles[m].position,1))\n")
 write(io[m], "W:$(PSO_.W), phi_1:$(PSO_.φ₁), phi_2:$(PSO_.φ₂)\n")
 end
 
 fitness = Vector{Float64}(undef, PSO_.M)
-fitness_file = open("fitness.txt", "w")
+fitness_file = open("outputs/fitness.txt", "w")
 for p = 1:300
     update_PSO!(PSO_)
     for m = 1:PSO_.M

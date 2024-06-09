@@ -29,7 +29,8 @@ classdef PSO
         % n rows of sigma, and n rows of w.\
         for m = 1:obj.parameter_M
             obj.particle(m).P = [reshape([rule.cluster.c],obj.n,[]);reshape([rule.cluster.sigma],obj.n,[]);reshape([rule.cluster.w],[],rule.j)];
-            obj.particle(m).V = (obj.parameter_Vmax+obj.parameter_Vmax)*rand(2*obj.n+1,rule.j) - obj.parameter_Vmax;
+            obj.particle(m).V = 2*(0.1)*rand(2*obj.n+1,rule.j) - (0.1);
+%             obj.particle(m).V = (obj.parameter_Vmax+obj.parameter_Vmax)*zeros(2*obj.n+1,rule.j);
             obj.particle(m).Pbest = obj.particle(m).P;
             obj.particle(m).Hbest = -Inf;
         end
@@ -99,10 +100,10 @@ classdef PSO
 
             % Update V to V(t+1)
             obj.particle(m).V = obj.parameter_W * obj.particle(m).V ...
-                + obj.parameter_phi1 .* rand(size(obj.particle(m).P,1),obj.J) .* (obj.particle(m).Pbest - obj.particle(m).P)...
-                + obj.parameter_phi2 .* rand(size(obj.particle(m).P,1),obj.J) .* (obj.particle_best.Pbest_g - obj.particle(m).P);
-            obj.particle(m).V(obj.particle(m).V > obj.parameter_Vmax) = obj.parameter_Vmax;
-            obj.particle(m).V(obj.particle(m).V < -obj.parameter_Vmax) = -obj.parameter_Vmax;
+                + obj.parameter_phi1 .* rand(size(obj.particle(m).P,1),obj.J) .* (obj.particle(m).Pbest .- obj.particle(m).P)...
+                + obj.parameter_phi2 .* rand(size(obj.particle(m).P,1),obj.J) .* (obj.particle_best.Pbest_g .- obj.particle(m).P);
+%             obj.particle(m).V(obj.particle(m).V > obj.parameter_Vmax) = obj.parameter_Vmax;
+%             obj.particle(m).V(obj.particle(m).V < -obj.parameter_Vmax) = -obj.parameter_Vmax;
 
             % Update Pbest and Pbest_g
             if obj.particle(m).H  >= obj.particle(m).Hbest

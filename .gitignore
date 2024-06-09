@@ -1,0 +1,4 @@
+julia/outputs/
+*.gif
+*.asv
+*.txt
