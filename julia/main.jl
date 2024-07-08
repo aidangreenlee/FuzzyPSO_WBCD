@@ -16,6 +16,7 @@ include("./PSO.jl")
 #φ₂ = parse(Float64, ARGS[6])
 #debug = false
 function loadData(number_of_clusters::Int; filepath::String="./data/diagnostic.data")
+    Random.seed!(1337)
     DATA = WBCD_data(filepath,nvars=10)
     #clusters = ClusterAnalysis.kmeans(DATA.training_x', number_of_clusters)
     clusters = cluster_data(DATA.training_x[:,1:10], DATA.training_d, number_of_clusters)
@@ -43,13 +44,22 @@ function WBCD_algorithm(clusters::cluster_data, DATA::WBCD_data, number_of_parti
     end
 
     fitness = Vector{Float64}(undef, PSO_.M)
-    fitness_file = open("outputs/fitness.txt", "w")
-    previous_mean_fitness = mean(map(x->x.H, PSO_.particles))
+    if debug
+        fitness_file = open("outputs/fitness.txt", "w")
+    end
+    
     mean_fitness = 0
+    previous_mean_fitness = 0
     delta_fitness = 9999
-    ε = 1e-5
+    ε = 1e-3
     p = 1
-    while (delta_fitness > ε || mean_fitness > 0.6 || p < 100) && p < 2000
+
+    buff_size = 20
+    bool_buff = Vector{Float64}(undef, 20)
+    count = 1
+    #while (delta_fitness > ε || mean_fitness > 0.6 || p < 100) && p < 2000
+    while ( p < 100 || any(bool_buff .> ε)) && p < 2000
+#        println(delta_fitness," ",mean_fitness," ",p)
         update_PSO!(PSO_, data=DATA, ThresholdMethod="normal")
         for m = 1:PSO_.M
         fitness[m] = PSO_.particles[m].H
@@ -63,19 +73,38 @@ function WBCD_algorithm(clusters::cluster_data, DATA::WBCD_data, number_of_parti
                                 PSO_.global_best.H]');
         end
         mean_fitness = mean(map(x->x.H, PSO_.particles))
+        min_fitness  = minimum(map(x->x.H, PSO_.particles))
+        max_fitness  = maximum(map(x->x.H, PSO_.particles))
+
+        epsilon = max_fitness - min_fitness
+        bool_buff[count] = epsilon
+
+        count = count + 1
+        if count > buff_size
+            count = 1
+        end
+
         delta_fitness = abs(mean_fitness - previous_mean_fitness)
         #println(p," ", delta_fitness)
 
         previous_mean_fitness = mean_fitness
         p = p + 1
     end
+    println(delta_fitness," ",mean_fitness," ",p)
+    println("buffer: ", bool_buff)
 
-    testing_set_fitness = PSO_fitness(PSO_.global_best, DATA, test_train="test")
-    println("Testing Set Fitness (not Acc): ", testing_set_fitness)
-
+    testing_set_fitness = PSO_fitness(PSO_.global_best, DATA, test_train="train")
+    println("Testing Set Accuracy: ", PSO_fitness(PSO_.global_best, DATA, test_train="test"))
+    #println("Testing Set Fitness (not Acc): ", testing_set_fitness)
+    if any(bool_buff .> 1e-2)
+        tmp = bool_buff .- ε
+        tmp[tmp .< 0] .= 0
+        testing_set_fitness *= 1-maximum(abs.(bool_buff .- ε))
+    end
+    println("End training: ", testing_set_fitness)
     # close all open files
-    close(fitness_file)
     if debug
+    close(fitness_file)
     for m = 1:PSO_.M
     close(io[m])
     end

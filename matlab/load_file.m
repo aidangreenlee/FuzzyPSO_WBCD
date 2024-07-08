@@ -15,7 +15,7 @@ overall_fitness = importdata("../julia/outputs/fitness.txt");
 names = {'radius','texture','perimeter','area','smoothness','compactness','concavity','concave points',...
     'symmetry','fractal dimension'};
 %%W
-nCluster = 5;
+nCluster = 3;
 index = 1;
 fitness = 2;
 

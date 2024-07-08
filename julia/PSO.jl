@@ -75,7 +75,7 @@ function update_PSO!(pso::PSO; data::Any = nothing, ThresholdMethod::String = "e
         # 1. Update velocity
         R¹ = rand(size(pso.particles[m].position, 1), size(pso.particles[m].position, 2))
         R² = rand(size(pso.particles[m].position, 1), size(pso.particles[m].position, 2))
-        R² = R² * 0.0 .+ 1
+        #R² = R² * 0.0 .+ 1
         #R¹ = R¹ * 0.0 .+ 0.01
         pso.particles[m].velocity = pso.W * pso.particles[m].velocity +
             pso.φ₁ * R¹ .* (pso.particles[m].position_best .- pso.particles[m].position) + 
@@ -131,11 +131,16 @@ function PSO_fitness(p::particle, data::WBCD_data; test_train::String = "train")
     w = p.position[end, :]
 
     if test_train == "train"
-    y = calculate_NFS(c, std, w, data.training_x)
-    H = calculate_fitness(y, data.training_d)
+        y = calculate_NFS(c, std, w, data.training_x)
+        H = calculate_fitness(y, data.training_d)
     else
-    y = calculate_NFS(c, std, w, data.testing_x)
-    H = calculate_fitness(y, data.testing_d)
+        y = calculate_NFS(c, std, w, data.testing_x)
+        TP, TN, FP, FN = calculate_fitness(y, data.testing_d, ACC=true)
+        H = (TP + TN) / (TP + TN + FP + FN)
+        println("Accuracy: ", H)
+        println(TP," | ", FP)
+        println(FN," | ", TN)
+        return H
     end
 
     return H

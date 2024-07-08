@@ -20,7 +20,7 @@ v = VideoWriter('outputVideo.mp4','MPEG-4');
 v.FrameRate = 5;
 frame = {};
 
-for i = 499:size(output,1)
+for i = 1:size(output,1)
     if exist("p")
         delete(p)
     end

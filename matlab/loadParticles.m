@@ -1,6 +1,6 @@
 function output = loadParticles(rundir, particle_numbers)
 if nargin < 1
-    rundir = '../julia/';
+    rundir = '../julia/outputs/';
     particle_numbers = 1:20;
 elseif nargin < 2
     particle_numbers = 1:20;
