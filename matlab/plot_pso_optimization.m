@@ -17,7 +17,7 @@ figure;
 line([0,0,10,10,0],[0,10,10,0,0],'Color','k'); hold on
 
 v = VideoWriter('outputVideo.mp4','MPEG-4');
-v.FrameRate = 5;
+v.FrameRate = 30;
 frame = {};
 
 for i = 1:size(output,1)

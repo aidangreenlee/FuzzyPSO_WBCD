@@ -112,7 +112,7 @@ function update_PSO!(pso::PSO; data::Any = nothing, ThresholdMethod::String = "e
         # 5. Update global particle best
         if pso.particles[m].H > pso.global_best.H
             pso.global_best = deepcopy(pso.particles[m])
-            println(pso.particles[m].H)
+            #println(pso.particles[m].H)
         end
 
         # 6. Update particle personal best
