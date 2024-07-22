@@ -16,21 +16,27 @@ include("./PSO.jl")
 #φ₂ = parse(Float64, ARGS[6])
 #debug = false
 
+# Conversion
+Base.convert(::Type{Matrix{Float64}}, x::Vector{T}) where {T<:Real} = reshape(Float64.(x),length(x),1)
+
+# main function to call single instatiation of Vmax/W/φ₁/φ₂
+# this can be used after training to evaluate final parameters but should not be
+# used to train Optuna because it clusters the data
+# can be updated later 
 function main(Vmax::Float64, W::Float64, φ₁::Float64, φ₂::Float64)
-    Random.seed!(1337)
+    #Random.seed!(1337)
     number_of_particles = 3
     iterations = 10
     clusters, DATA = loadData(number_of_particles, iterations) # 3 clusters, 10 training set splits
 
-    #for i = 1:iterations
     fitness = WBCD_algorithm(clusters, DATA, number_of_particles, Vmax, W, φ₁, φ₂, debug=false)
-    #end
 
     # average fitness of all training sets
     #println("Fitness Vector:", fitness)
     return fitness
 end
 
+# load the data, only forming a single cluster/training set
 function loadData(number_of_clusters::Int; filepath::String="./data/diagnostic.data")
     #Random.seed!(1337)
     DATA = WBCD_data(filepath,nvars=10)
@@ -40,7 +46,7 @@ function loadData(number_of_clusters::Int; filepath::String="./data/diagnostic.d
     return clusters, DATA
 end
 
-# Cluster the data into training sets <iterations> number of times to split training set
+# Cluster the data into training sets <iterations> number of times
 function loadData(number_of_clusters::Int, iterations::Int; filepath::String="./data/diagnostic.data")
     Random.seed!(1337)
     cluster_vec = Vector{cluster_data}(undef, iterations)
@@ -51,20 +57,20 @@ function loadData(number_of_clusters::Int, iterations::Int; filepath::String="./
     return cluster_vec, DATA_vec
 end
 
-function WBCD_algorithm(clusters::Vector{cluster_data}, DATA::Vector{WBCD_data}, number_of_particles::Int, Vₘₐₓ::Float64, W::Float64, φ₁::Float64, φ₂::Float64; debug::Bool=false, seed::Int=1337)
-    seed_start = seed
-    num_seeds = 10
-    fitness_vec = Matrix{Float64}(undef, length(clusters), num_seeds)
-    for i = 1:length(clusters)
-        for p = 1:num_seeds
-            Random.seed!(seed_start + p) # TODO save seed to debug
-            fitness_vec[i, p] = WBCD_algorithm(clusters[i], DATA[i], number_of_particles, Vₘₐₓ, W, φ₁, φ₂, debug=debug, seed=seed)
-        end
-    end
-    return mean(fitness_vec)
-end
+#function WBCD_algorithm(clusters::Vector{cluster_data}, DATA::Vector{WBCD_data}, number_of_particles::Int, Vₘₐₓ::Float64, W::Float64, φ₁::Float64, φ₂::Float64; debug::Bool=false, seed::Int=1337)
+#    seed_start = seed
+#    num_seeds = 10
+#    fitness_vec = Matrix{Float64}(undef, length(clusters), num_seeds)
+#    for i = 1:length(clusters)
+#        for p = 1:num_seeds
+#            Random.seed!(seed_start + p) # TODO save seed to debug
+#            fitness_vec[i, p] = WBCD_algorithm(clusters[i], DATA[i], number_of_particles, Vₘₐₓ, W, φ₁, φ₂, debug=debug, seed=seed)
+#        end
+#    end
+#    return mean(fitness_vec)
+#end
 
-function WBCD_algorithm(clusters::cluster_data, DATA::WBCD_data, number_of_particles::Int, Vₘₐₓ::Float64, W::Float64, φ₁::Float64, φ₂::Float64; debug::Bool=false, seed::Int=1337)
+function WBCD_algorithm(clusters::Array{cluster_data}, DATA::Array{WBCD_data}, number_of_particles::Int, Vₘₐₓ::Float64, W::Float64, φ₁::Float64, φ₂::Float64; debug::Bool=false, seed::Int=1337)
     Random.seed!(seed)
     PSO_ = PSO(clusters, DATA,W=W,φ₁=φ₁,φ₂=φ₂,placement="random",M=number_of_particles, Vmax=Vₘₐₓ)
 

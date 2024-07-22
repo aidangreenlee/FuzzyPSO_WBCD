@@ -10,6 +10,14 @@ mutable struct particle
     function particle(velocity::Matrix{Float64}, position::Matrix{Float64}, H::Float64)
         new(velocity, position, position, H, H)
     end
+
+    function particle(velocity::Array{Float64,3}, position::Array{Float64,3}, H::Array{Float64})
+        P = Array{particle}(undef, size(velocity,3))
+        for i = 1:size(velocity,3)
+            P[i] = particle(velocity[:,:,i], position[:,:,i], H[i])
+        end
+        return P
+    end
 end
 
 mutable struct PSO
@@ -22,32 +30,48 @@ mutable struct PSO
     particles::Vector{particle} # vector of particles
 
 
-    function PSO(cluster::cluster_data, x::WBCD_data; W::Float64=1.0, φ₁::Float64=1.0, φ₂::Float64=1.0, M::Int=20, Vmax::Float64=3.0, placement::String="clustered")
-        particles = Vector{particle}(undef, M)
-        H = Vector{Float64}(undef, M)
-        P = Matrix{Float64}(undef,2*size(cluster.c,1),length(cluster.w))
+    # Inputs:
+    # cluster: Array of N clusters associated with N training sets
+    # x:       Array of N training sets
+    function PSO(cluster::Array{cluster_data}, x::Array{WBCD_data}; W::Float64=1.0, φ₁::Float64=1.0, φ₂::Float64=1.0, M::Int=20, Vmax::Float64=3.0, placement::String="clustered")
+        #particles = Vector{particle}(undef, M)
+        particles = Array{particle}(undef, M, length(cluster))
+        #H = Vector{Float64}(undef, M)
+        H = Array{Float64}(undef, M, length(cluster))
+        #P = Matrix{Float64}(undef,2*size(cluster.c,1),length(cluster.w))
+        P = Array{Float64}(undef, 2*size(cluster[1].c,1), length(cluster[1].w), length(cluster))
         for m = 1:M
 
             # Set Positions
             if m == 1 || placement == "clustered" # always place particle 1 at clustered location
-                P = vcat(cluster.c, cluster.std, cluster.w') # create particle position vector with positions and stdevs and output weight
+                # C = map(x->x.c, cluster )
+                C = reshape(reduce(hcat,map(x->x.c,cluster)), length(cluster), cluster[1].K, length(cluster))
+                # S = map(x->x.std, cluster)
+                S = reshape(reduce(hcat,map(x->x.std,cluster)), length(cluster), cluster[1].K, length(cluster))
+                # W = map(x->reshape(x.w,1,cluster[1].K), cluster)
+                W = reshape(reduce(vcat,map(x->reshape(x.w,1,cluster[1].K), cluster)),1, cluster[1].K, length(cluster))
+                #P = map(x->vcat(x[1],x[2],x[3]),A)
+                P = vcat(C,S,W)
+                # P = vcat(cluster.c, cluster.std, cluster.w') # create particle position vector with positions and stdevs and output weight
             else
-                P = vcat( rand(size(cluster.c,1),size(cluster.c,2)),
-                          rand(size(cluster.std,1),size(cluster.std,2)),
-                          rand(size(cluster.w,2),size(cluster.w,1))
-                        )*20.0.-5 # set particle position randomly between 0 to 10 in each dimension
+                P = rand(size(cluster[1].c,1) + size(cluster[1].std,1) + size(cluster[1].w,2), cluster[1].K, length(cluster))
             end
 
             # Now set velocities
             if placement == "clustered"
-                velocity = 2 * 0.1 * rand(size(P,1), size(P,2)) .- 0.1 # velocity is random between ±Vmax
+                velocity = 2 * 0.1 * rand(size(P,1), size(P,2), size(P,3)) .- 0.1 # velocity is random between ±Vmax
             else
-                velocity = zeros(size(P,1), size(P,2)) # initial velocity is 0
+                velocity = zeros(size(P,1), size(P,2), size(P,3)) # initial velocity is 0
             end
-
-            y = calculate_NFS(P[1:size(cluster.c,1),:], P[size(cluster.c,1)+1:end-1,:], cluster.w, x.training_x)
-            H[m] = calculate_fitness(y, x.training_d)
-            particles[m] = particle(velocity, P, H[m]) # initialize best position to the initial position
+            
+            temp = map(x->x.training_x, x) 
+            NFS_input = reduce((x,y)->cat(x,y,dims=3),(temp[i] for i in 1:length(temp)))
+            #y = calculate_NFS(P[1:size(cluster.c,1),:], P[size(cluster.c,1)+1:end-1,:], cluster.w, x.training_x)
+            # y = calculate_NFS(P[1:size(cluster.c,1),:], P[size(cluster.c,1)+1:end-1,:], cluster.w, x.training_x)
+            y = calculate_NFS(P, NFS_input)
+            truth = reduce(hcat,map(x->x.training_d, x))
+            H[m,:] = calculate_fitness(y, truth)
+            particles[m,:] = particle(velocity, P, H[m,:]) # initialize best position to the initial position
         end
 
         # get the particle with maximum fitness

@@ -1,7 +1,7 @@
 using Statistics
 export cluster
 
-mutable struct cluster_data
+struct cluster_data
     c::Matrix{Float64}
     std::Matrix{Float64}
     w::Vector{Float64}
@@ -17,3 +17,5 @@ mutable struct cluster_data
         new(c, std, w, number_of_clusters, N)
     end
 end
+
+clusterInputs = Union{AbstractArray{cluster_data}, cluster_data}
