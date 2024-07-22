@@ -18,12 +18,13 @@ include("./PSO.jl")
 
 function main(Vmax::Float64, W::Float64, φ₁::Float64, φ₂::Float64)
     Random.seed!(1337)
-    number_of_particles = 3
+    number_of_particles = 20
+    number_of_clusters = 3
     iterations = 10
-    clusters, DATA = loadData(number_of_particles, iterations) # 3 clusters, 10 training set splits
+    clusters, DATA = loadData(number_of_clusters, iterations) # 3 clusters, 10 training set splits
 
     #for i = 1:iterations
-    fitness = WBCD_algorithm(clusters, DATA, number_of_particles, Vmax, W, φ₁, φ₂, debug=false)
+    fitness = WBCD_algorithm(clusters, DATA, number_of_particles, Vmax, W, φ₁, φ₂, debug=true)
     #end
 
     # average fitness of all training sets
@@ -58,14 +59,14 @@ function WBCD_algorithm(clusters::Vector{cluster_data}, DATA::Vector{WBCD_data},
     for i = 1:length(clusters)
         for p = 1:num_seeds
             Random.seed!(seed_start + p) # TODO save seed to debug
-            fitness_vec[i, p] = WBCD_algorithm(clusters[i], DATA[i], number_of_particles, Vₘₐₓ, W, φ₁, φ₂, debug=debug, seed=seed)
+            fitness_vec[i, p] = WBCD_algorithm(clusters[i], DATA[i], number_of_particles, Vₘₐₓ, W, φ₁, φ₂, debug=debug, seed=seed_start + p)
         end
     end
     return mean(fitness_vec)
 end
 
 function WBCD_algorithm(clusters::cluster_data, DATA::WBCD_data, number_of_particles::Int, Vₘₐₓ::Float64, W::Float64, φ₁::Float64, φ₂::Float64; debug::Bool=false, seed::Int=1337)
-    Random.seed!(seed)
+    #Random.seed!(seed)
     PSO_ = PSO(clusters, DATA,W=W,φ₁=φ₁,φ₂=φ₂,placement="random",M=number_of_particles, Vmax=Vₘₐₓ)
 
     println("Running particle swarm...")
