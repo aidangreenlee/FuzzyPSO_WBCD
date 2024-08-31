@@ -2,3 +2,4 @@ julia/outputs/
 *.gif
 *.asv
 *.txt
+*.sqlite3

@@ -13,7 +13,7 @@ mutable struct cluster_data
         c = reduce(hcat, clusters.centroids)
         std = reduce(hcat, map(r->Statistics.std.(eachcol(data[clusters.cluster.==r,:])), 1:number_of_clusters))
         w = map(r->Statistics.mean((diagnosis[clusters.cluster.==r])), 1:number_of_clusters)
-        N = map(r->sum(clusters.cluster.==r),1:5)
+        N = map(r->sum(clusters.cluster.==r),1:number_of_clusters)
         new(c, std, w, number_of_clusters, N)
     end
 end

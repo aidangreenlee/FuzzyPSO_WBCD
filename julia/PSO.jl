@@ -18,11 +18,14 @@ mutable struct PSO
     φ₂::Float64 # Social influence
     M::Int # Number of particles
     Vmax::Float64 # Maximum velocity
+    alpha::Float64
+    beta::Float64
+    gamma::Float64
     global_best::particle
     particles::Vector{particle} # vector of particles
 
 
-    function PSO(cluster::cluster_data, x::WBCD_data; W::Float64=1.0, φ₁::Float64=1.0, φ₂::Float64=1.0, M::Int=20, Vmax::Float64=3.0, placement::String="clustered")
+    function PSO(cluster::cluster_data, x::WBCD_data; W::Float64=1.0, φ₁::Float64=1.0, φ₂::Float64=1.0, M::Int=20, Vmax::Float64=3.0, alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4, placement::String="clustered")
         particles = Vector{particle}(undef, M)
         H = Vector{Float64}(undef, M)
         P = Matrix{Float64}(undef,2*size(cluster.c,1),length(cluster.w))
@@ -53,7 +56,7 @@ mutable struct PSO
         # get the particle with maximum fitness
         global_best = deepcopy(particles[argmax(H)])
 
-        new(W, φ₁, φ₂, M, Vmax, global_best, particles)
+        new(W, φ₁, φ₂, M, Vmax, alpha, beta, gamma, global_best, particles)
     end
 
     function PSO(; W::Float64=1.0, φ₁::Float64=1.0, φ₂::Float64=1.0, M::Int=20, Vmax::Float64=0.2)
@@ -66,7 +69,7 @@ mutable struct PSO
             particles[m] = particle(velocity, P, H)
         end
         global_best = deepcopy(particles[1])
-        new(W, φ₁, φ₂, M, Vmax, global_best, particles)
+        new(W, φ₁, φ₂, M, Vmax, 0.2, 0.4, 0.4, global_best, particles)
     end
 end
 
@@ -106,7 +109,7 @@ function update_PSO!(pso::PSO; data::Any = nothing, ThresholdMethod::String = "e
         if isnothing(data)
             pso.particles[m].H = PSO_fitness(pso.particles[m])
         else
-            pso.particles[m].H = PSO_fitness(pso.particles[m], data)
+            pso.particles[m].H = PSO_fitness(pso.particles[m], data, alpha=pso.alpha, beta=pso.beta, gamma=pso.gamma)
         end
 
         # 5. Update global particle best
@@ -124,7 +127,7 @@ function update_PSO!(pso::PSO; data::Any = nothing, ThresholdMethod::String = "e
     end
 end
 
-function PSO_fitness(p::particle, data::WBCD_data; test_train::String = "train")
+function PSO_fitness(p::particle, data::WBCD_data; test_train::String = "train", alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4)
     n = Int((size(p.position, 1) - 1)/2)
     c = p.position[1:n, :]
     std = p.position[n+1:2*n, :]
@@ -135,12 +138,13 @@ function PSO_fitness(p::particle, data::WBCD_data; test_train::String = "train")
         H = calculate_fitness(y, data.training_d)
     else
         y = calculate_NFS(c, std, w, data.testing_x)
-        TP, TN, FP, FN = calculate_fitness(y, data.testing_d, ACC=true)
+        y = Int.(y .>= 0.5)
+        TP, TN, FP, FN = calculate_fitness(y, data.testing_d, α=alpha, β=beta, γ=gamma, ACC=true)
         H = (TP + TN) / (TP + TN + FP + FN)
         println("Accuracy: ", H)
         println(TP," | ", FP)
         println(FN," | ", TN)
-        return H
+        return H, [TP, TN, FP, FN]
     end
 
     return H
