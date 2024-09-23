@@ -36,10 +36,11 @@ end
 
 function loadData(number_of_clusters::Int; filepath::String="./data/diagnostic.data")
     #Random.seed!(1337)
-    #DATA = WBCD_data(filepath, nvars=10)
-    DATA = WBCD_data(true)
+    DATA = WBCD_data(filepath, nvars=10)
+    TDAT = TrainData(DATA)
+    #DATA = WBCD_data(true)
     #clusters = ClusterAnalysis.kmeans(DATA.training_x', number_of_clusters)
-    clusters = cluster_data(DATA.training_x, DATA.training_d, number_of_clusters)
+    clusters = cluster_data(TDAT.training_x, TDAT.training_d, number_of_clusters)
     println("Clusters generated...")
     return clusters, DATA
 end
@@ -64,12 +65,14 @@ function WBCD_algorithm(clusters::Vector{cluster_data}, DATA::Vector{WBCD_data},
     iterations = Array{Int,1}(undef,length(clusters) * num_seeds)
     count = 1
 
-    debug.output_dir = "outputs_norep_$(alpha)_$(beta)_$(gamma)_$(clusters[1].K)"
+    debug.output_dir = "outputs_5050epsilon_$(alpha)_$(beta)_$(gamma)_$(clusters[1].K)"
 
     for i = 1:length(clusters)
         for p = 1:num_seeds
             Random.seed!(seed_start + p) # TODO save seed to debug
-            KD_fitness[count], KD[count] , test, confusion, PSO_, iterations[count] = WBCD_algorithm(clusters[i], DATA[i], number_of_particles, Vₘₐₓ, W, φ₁, φ₂, alpha=alpha, beta=beta, gamma=gamma, debug=debug, seed=seed_start + p)
+            println("Training Data Split!")
+            TDAT = TrainData(DATA[i])
+            KD_fitness[count], KD[count] , test, confusion, PSO_, iterations[count] = WBCD_algorithm(clusters[i], TDAT, number_of_particles, Vₘₐₓ, W, φ₁, φ₂, alpha=alpha, beta=beta, gamma=gamma, debug=debug, seed=seed_start + p)
             all_p_fitness = map(x->x.H, PSO_.particles)
 
             debug.fitness_vec[count,:] = [minimum(all_p_fitness), mean(all_p_fitness), maximum(all_p_fitness)]
@@ -122,7 +125,7 @@ function WBCD_algorithm(clusters::Vector{cluster_data}, DATA::Vector{WBCD_data},
     return mean(filter(!isnan,KD_fitness))
 end
 
-function WBCD_algorithm(clusters::cluster_data, DATA::WBCD_data, number_of_particles::Int, Vₘₐₓ::Float64, W::Float64, φ₁::Float64, φ₂::Float64; alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4, debug::output, seed::Int=1337)
+function WBCD_algorithm(clusters::cluster_data, DATA::TrainData, number_of_particles::Int, Vₘₐₓ::Float64, W::Float64, φ₁::Float64, φ₂::Float64; alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4, debug::output, seed::Int=1337)
     #Random.seed!(seed)
     PSO_ = PSO(clusters, DATA, W=W, φ₁=φ₁, φ₂=φ₂, alpha=alpha, beta=beta, gamma=gamma, placement="random", M=number_of_particles, Vmax=Vₘₐₓ)
 
@@ -149,7 +152,7 @@ function WBCD_algorithm(clusters::cluster_data, DATA::WBCD_data, number_of_parti
     mean_fitness = 0
     previous_mean_fitness = 0
     delta_fitness = 9999
-    ε = 0.1
+    ε = 0.01
     p = 1
 
     buff_size = 20
@@ -229,27 +232,33 @@ function majority_vote(cluster::cluster_data, DATA::WBCD_data, Vmax::Float64, W:
     swarms = Array{PSO}(undef, iterations)
     # start by getting 100 particle swarms, initialized with 100 seeds
     p = 1
+    debug = output(iterations, cluster.K, size(clusters[1].c,1)+size(clusters[1].std,1)+size(clusters[1].w,2), false)
     for i = 1:iterations
-        _, _, _, _, swarms[i], _ = WBCD_algorithm(cluster, DATA, 20, Vmax, W, phi1, phi2, alpha=alpha, beta=beta, gamma=gamma, debug=debug, seed=1337 + p)
+        if i == iterations
+            debug.debug = true
+        end
+        TDAT = TrainData(DATA)
+        _, _, _, _, swarms[i], _ = WBCD_algorithm(cluster, TDAT, 20, Vmax, W, phi1, phi2, alpha=alpha, beta=beta, gamma=gamma, debug=debug, seed=1337 + p)
         p += 1
     end
 
+    TDAT = TrainData(DATA)
     # now evaluate the ANFIS network for each seed
-    classifications = Array{Int,2}(undef, size(DATA.testing_d,1), iterations)
+    classifications = Array{Int,2}(undef, size(TDAT.testing_d,1), iterations)
     fitness = Array{Float64}(undef, iterations)
     PSOfitness = Array{Float64}(undef, iterations)
     for  i = 1:iterations
         c = swarms[i].global_best.position[1:size(cluster.c,1), :]
         σ = swarms[i].global_best.position[size(cluster.c,1) + 1:end-1, :]
         w = swarms[i].global_best.position[end, :]
-        classifications[:, i] = Int.(calculate_NFS(c, σ, w, DATA.testing_x) .>= 0.5)
-        TP, TN, FP, FN = calculate_fitness(classifications[:,i], DATA.testing_d, α=alpha, β=beta, γ=gamma, ACC=true)
+        classifications[:, i] = Int.(calculate_NFS(c, σ, w, TDAT.testing_x) .>= 0.5)
+        TP, TN, FP, FN = calculate_fitness(classifications[:,i], TDAT.testing_d, α=alpha, β=beta, γ=gamma, ACC=true)
         fitness[i] = (TP + TN) / (TP + TN + FP + FN)
         PSOfitness[i] = swarms[i].global_best.H
     end
 
     vote = mode.(eachrow(classifications))
-    TP, TN, FP, FN = calculate_fitness(vote, DATA.testing_d, α=alpha, β=beta, γ=gamma, ACC=true)
+    TP, TN, FP, FN = calculate_fitness(vote, TDAT.testing_d, α=alpha, β=beta, γ=gamma, ACC=true)
     println(TP, " | ", FP)
     println(FN, " | ", TN)
     println(fitness)

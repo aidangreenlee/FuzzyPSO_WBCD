@@ -1,6 +1,9 @@
 import optuna
 import sys
 from julia.api import Julia
+import os
+
+os.environ["JULIA_NUM_THREADS"] = str(10)
 
 ncluster = sys.argv[1]
 jl = Julia(compiled_modules=False)
@@ -12,13 +15,13 @@ def objective(trial):
     phi1 = trial.suggest_float('phi1', 0, 1)
     phi2 = trial.suggest_float('phi2', 0, 3)
     W    = trial.suggest_float('W', 0, 4)
-    Vmax = trial.suggest_float('Vmax', 0, 4)
+    Vmax = trial.suggest_float('Vmax', 0, 6)
     iteration = trial.number
     return jl.eval("WBCD_algorithm(clusters, DATA, 20, {Vmax:.8f}, {W:.8f}, {phi1:.8f}, {phi2:.8f}, alpha=0.4, beta=0.3, gamma=0.3,debug=output_data, iteration={iteration:d})".format(Vmax=Vmax,W=W,phi1=phi1,phi2=phi2,iteration=iteration))
 
 print("evaluating")
 study = optuna.create_study(
-    storage="sqlite:///norep_db.sqlite3",
+    storage="sqlite:///5050epsilon_db.sqlite3",
     study_name="WBCD_{ncluster}clusters_0.4_0.3_0.3".format(ncluster=ncluster),
     direction="maximize",
     load_if_exists=True,

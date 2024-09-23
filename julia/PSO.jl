@@ -25,7 +25,7 @@ mutable struct PSO
     particles::Vector{particle} # vector of particles
 
 
-    function PSO(cluster::cluster_data, x::WBCD_data; W::Float64=1.0, φ₁::Float64=1.0, φ₂::Float64=1.0, M::Int=20, Vmax::Float64=3.0, alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4, placement::String="clustered")
+    function PSO(cluster::cluster_data, x::TrainData; W::Float64=1.0, φ₁::Float64=1.0, φ₂::Float64=1.0, M::Int=20, Vmax::Float64=3.0, alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4, placement::String="clustered")
         particles = Vector{particle}(undef, M)
         H = Vector{Float64}(undef, M)
         P = Matrix{Float64}(undef,2*size(cluster.c,1),length(cluster.w))
@@ -127,7 +127,7 @@ function update_PSO!(pso::PSO; data::Any = nothing, ThresholdMethod::String = "e
     end
 end
 
-function PSO_fitness(p::particle, data::WBCD_data; test_train::String = "train", alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4)
+function PSO_fitness(p::particle, data::TrainData; test_train::String = "train", alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4)
     n = Int((size(p.position, 1) - 1)/2)
     c = p.position[1:n, :]
     std = p.position[n+1:2*n, :]
