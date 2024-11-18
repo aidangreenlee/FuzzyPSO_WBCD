@@ -33,12 +33,13 @@ mutable struct PSO
 
             # Set Positions
             if m == 1 || placement == "clustered" # always place particle 1 at clustered location
-                P = vcat(cluster.c, cluster.std, cluster.w') # create particle position vector with positions and stdevs and output weight
+                P = vcat(cluster.c, cluster.std, rand(size(x.training_x,2), size(cluster.std,2)), cluster.w') # create particle position vector with positions and stdevs and output weight
             else
-                P = vcat( rand(size(cluster.c,1),size(cluster.c,2)),
-                          rand(size(cluster.std,1),size(cluster.std,2)),
-                          rand(size(cluster.w,2),size(cluster.w,1))
-                        )*20.0.-5 # set particle position randomly between 0 to 10 in each dimension
+                P = vcat( rand(size(cluster.c,1),size(cluster.c,2))*20.0.-5,
+                          rand(size(cluster.std,1),size(cluster.std,2))*10.0.-5,
+                          rand(size(x.training_x,2),size(cluster.std,2))*4.0,
+                          rand(size(cluster.w,2),size(cluster.w,1)) * 5
+                        ) # set particle position randomly between 0 to 10 in each dimension
             end
 
             # Now set velocities
@@ -48,7 +49,7 @@ mutable struct PSO
                 velocity = zeros(size(P,1), size(P,2)) # initial velocity is 0
             end
 
-            y = calculate_NFS(P[1:size(cluster.c,1),:], P[size(cluster.c,1)+1:end-1,:], cluster.w, x.training_x)
+            y = calculate_NFS(P[1:size(cluster.c,1),:], P[size(cluster.c,1)+1:2*size(cluster.c,1),:], P[2*size(cluster.c,1)+1:end-1,:],cluster.w, x.training_x)
             H[m] = calculate_fitness(y, x.training_d)
             particles[m] = particle(velocity, P, H[m]) # initialize best position to the initial position
         end
@@ -128,16 +129,17 @@ function update_PSO!(pso::PSO; data::Any = nothing, ThresholdMethod::String = "e
 end
 
 function PSO_fitness(p::particle, data::TrainData; test_train::String = "train", alpha::Float64=0.2, beta::Float64=0.4, gamma::Float64=0.4)
-    n = Int((size(p.position, 1) - 1)/2)
+    n = Int((size(p.position, 1) - 1)/3)
     c = p.position[1:n, :]
     std = p.position[n+1:2*n, :]
+    pq = p.position[2*n+1:end-1,:]
     w = p.position[end, :]
 
     if test_train == "train"
-        y = calculate_NFS(c, std, w, data.training_x)
+        y = calculate_NFS(c, std, pq, w, data.training_x)
         H = calculate_fitness(y, data.training_d)
     else
-        y = calculate_NFS(c, std, w, data.testing_x)
+        y = calculate_NFS(c, std, pq, w, data.testing_x)
         y = Int.(y .>= 0.5)
         TP, TN, FP, FN = calculate_fitness(y, data.testing_d, α=alpha, β=beta, γ=gamma, ACC=true)
         H = (TP + TN) / (TP + TN + FP + FN)

@@ -65,7 +65,7 @@ function WBCD_algorithm(clusters::Vector{cluster_data}, DATA::Vector{WBCD_data},
     iterations = Array{Int,1}(undef,length(clusters) * num_seeds)
     count = 1
 
-    debug.output_dir = "outputs_5050epsilon_$(alpha)_$(beta)_$(gamma)_$(clusters[1].K)"
+    debug.output_dir = "outputs_5050pppp_$(alpha)_$(beta)_$(gamma)_$(clusters[1].K)"
 
     for i = 1:length(clusters)
         for p = 1:num_seeds
@@ -152,7 +152,7 @@ function WBCD_algorithm(clusters::cluster_data, DATA::TrainData, number_of_parti
     mean_fitness = 0
     previous_mean_fitness = 0
     delta_fitness = 9999
-    ε = 0.01
+    ε = 0.1
     p = 1
 
     buff_size = 20
@@ -249,9 +249,10 @@ function majority_vote(cluster::cluster_data, DATA::WBCD_data, Vmax::Float64, W:
     PSOfitness = Array{Float64}(undef, iterations)
     for  i = 1:iterations
         c = swarms[i].global_best.position[1:size(cluster.c,1), :]
-        σ = swarms[i].global_best.position[size(cluster.c,1) + 1:end-1, :]
+        σ = swarms[i].global_best.position[size(cluster.c,1) + 1:2*size(cluster.c,1), :]
+        pq = swarms[i].global_best.position[2*size(cluster.c,1)+1:end-1,:]
         w = swarms[i].global_best.position[end, :]
-        classifications[:, i] = Int.(calculate_NFS(c, σ, w, TDAT.testing_x) .>= 0.5)
+        classifications[:, i] = Int.(calculate_NFS(c, σ, pq, w, TDAT.testing_x) .>= 0.5)
         TP, TN, FP, FN = calculate_fitness(classifications[:,i], TDAT.testing_d, α=alpha, β=beta, γ=gamma, ACC=true)
         fitness[i] = (TP + TN) / (TP + TN + FP + FN)
         PSOfitness[i] = swarms[i].global_best.H

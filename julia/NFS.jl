@@ -1,11 +1,13 @@
 export calculate_NFS
 
-function calculate_NFS(c::Matrix{Float64}, std::Matrix{Float64}, w::Vector{Float64}, x::Matrix{Float64})
+function calculate_NFS(c::Matrix{Float64}, std::Matrix{Float64}, p::Matrix{Float64}, w::Vector{Float64}, x::Matrix{Float64})
     ŷ = Vector{Int}(undef, size(x,1))
     for i = 1:size(x,1)
         O² = exp.(-((x[i,:] .- c).^2)./(std).^2)
         O³ = prod.(eachcol(O²))'
-        ŷ[i] = sum(O³.*w) < 0.5 ? 0 : 1
+        z = sum(repeat(x[i,:],1,length(w)) .* p, dims=1) .+ w'
+        ŷ[i] = dot(z,O³)/sum(O³) < 0.5 ? 0 : 1
+        #ŷ[i] = sum(O³.*w) < 0.5 ? 0 : 1
         #ŷ[i] = sum(O³.*w)
     end
     
